@@ -9,7 +9,6 @@ import com.google.gson.Gson;
 import java.io.InputStream;
 import java.util.*;
 
-
 /* JSON Format
 
 {"file":
@@ -32,125 +31,103 @@ import java.util.*;
 } 
 */
 
+public class DFS {
 
-public class DFS
-{
-    
-
-    public class PagesJson
-    {
+    public class PagesJson {
         Long guid;
         Long size;
-        public PagesJson()
-        {
-            
+
+        public PagesJson() {
+
         }
         // getters
         // setters
     };
 
-    public class FileJson 
-    {
+    public class FileJson {
         String name;
-        Long   size;
+        Long size;
         ArrayList<PagesJson> pages;
-        public FileJson()
-        {
-            
+
+        public FileJson() {
+
         }
         // getters
         // setters
     };
-    
-    public class FilesJson 
-    {
-         List<FileJson> file;
-         public FilesJson() 
-         {
-             
-         }
+
+    public class FilesJson {
+        List<FileJson> file;
+
+        public FilesJson() {
+
+        }
         // getters
         // setters
     };
-    
-    
+
     int port;
-    Chord  chord;
-    
-    
-    private long md5(String objectName)
-    {
-        try
-        {
+    Chord chord;
+
+    private long md5(String objectName) {
+        try {
             MessageDigest m = MessageDigest.getInstance("MD5");
             m.reset();
             m.update(objectName.getBytes());
-            BigInteger bigInt = new BigInteger(1,m.digest());
+            BigInteger bigInt = new BigInteger(1, m.digest());
             return Math.abs(bigInt.longValue());
-        }
-        catch(NoSuchAlgorithmException e)
-        {
-                e.printStackTrace();
-                
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+
         }
         return 0;
     }
-    
-    
-    
-    public DFS(int port) throws Exception
-    {
-        
-        
+
+    public DFS(int port) throws Exception {
+
         this.port = port;
         long guid = md5("" + port);
         chord = new Chord(port, guid);
-        Files.createDirectories(Paths.get(guid+"/repository"));
-        Files.createDirectories(Paths.get(guid+"/tmp"));
+        Files.createDirectories(Paths.get(guid + "/repository"));
+        Files.createDirectories(Paths.get(guid + "/tmp"));
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 chord.leave();
             }
         });
-        
+
     }
-    
-  
-/**
- * Join the chord
-  *
- */
-    public void join(String Ip, int port) throws Exception
-    {
+
+    /**
+     * Join the chord
+     *
+     */
+    public void join(String Ip, int port) throws Exception {
         chord.joinRing(Ip, port);
         chord.print();
     }
-    
-    
-   /**
- * leave the chord
-  *
- */ 
-    public void leave() throws Exception
-    {        
-       chord.leave();
+
+    /**
+     * leave the chord
+     *
+     */
+    public void leave() throws Exception {
+        chord.leave();
     }
-  
-   /**
- * print the status of the peer in the chord
-  *
- */
-    public void print() throws Exception
-    {
+
+    /**
+     * print the status of the peer in the chord
+     *
+     */
+    public void print() throws Exception {
         chord.print();
     }
-    
-/**
- * readMetaData read the metadata from the chord
-  *
- */
-    public FilesJson readMetaData() throws Exception
-    {
+
+    /**
+     * readMetaData read the metadata from the chord
+     *
+     */
+    public FilesJson readMetaData() throws Exception {
         FilesJson filesJson = null;
         try {
             Gson gson = new Gson();
@@ -162,95 +139,126 @@ public class DFS
             scan.useDelimiter("\\A");
             String strMetaData = scan.next();
             System.out.println(strMetaData);
-            filesJson= gson.fromJson(strMetaData, FilesJson.class);
-        } catch (NoSuchElementException ex)
-        {
+            filesJson = gson.fromJson(strMetaData, FilesJson.class);
+        } catch (NoSuchElementException ex) {
             filesJson = new FilesJson();
         }
         return filesJson;
     }
-    
-/**
- * writeMetaData write the metadata back to the chord
-  *
- */
-    public void writeMetaData(FilesJson filesJson) throws Exception
-    {
+
+    /**
+     * writeMetaData write the metadata back to the chord
+     *
+     */
+    public void writeMetaData(FilesJson filesJson) throws Exception {
         long guid = md5("Metadata");
         ChordMessageInterface peer = chord.locateSuccessor(guid);
-        
+
         Gson gson = new Gson();
         peer.put(guid, gson.toJson(filesJson));
     }
-   
-/**
- * Change Name
-  *
- */
-    public void move(String oldName, String newName) throws Exception
-    {
-        // TODO:  Change the name in Metadata
+
+    /**
+     * Change Name
+     *
+     */
+    public void move(String oldName, String newName) throws Exception {
+        // TODO: Change the name in Metadata
         // Write Metadata
+
+        // Setting temp JsonObject
+        Gson gson = new Gson();
+        JsonObject request = new JsonObject();
+        JsonObject[] jsonRequest;
+
+        // Creating an array of Json Objects from metaData.json
+        try {
+            String path = "/metadata.json";
+            BufferedReader br = new BufferedReader(new FileReader(path));
+            jsonRequest = gson.fromJson(br, JsonObject[].class);
+
+            // Looks for method name, and returns JSON object with matching name
+            for (JsonObject object : jsonRequest) {
+                if (object.get("name").getAsString().equals(oldName)) {
+                    object.addProperty("name", newName);
+                    Timestamp tStamp = new Timestamp(System.currentTimeMillis());
+                    object.addProperty("readTS", tStamp);
+                    object.addProperty("writeTS", tStamp);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-  
-/**
- * List the files in the system
-  *
- * @param filename Name of the file
- */
-    public String lists() throws Exception
-    {
+    /**
+     * create an empty file
+     *
+     * @param filename Name of the file
+     */
+    public void create(String fileName) throws Exception {
+        // TODO: Create the file fileName by adding a new entry to the Metadata
+        // Write Metadata
+
+    }
+
+    /**
+     * delete file
+     *
+     * @param filename Name of the file
+     */
+    public void delete(String fileName) throws Exception {
+
+    }
+
+    /**
+     * Read block pageNumber of fileName
+     *
+     * @param filename   Name of the file
+     * @param pageNumber number of block.
+     */
+    public RemoteInputFileStream read(String fileName, int pageNumber) throws Exception {
+        return null;
+    }
+
+    /**
+     * List the files in the system
+     *
+     * @param filename Name of the file
+     */
+    public String lists() throws Exception {
         String listOfFiles = "";
- 
+        Metadata md = readMetaData();
+        if (md.files.size() > 0 || md == null) {
+            Metadata metadata = readMetaData();
+            metadata.printListOfFiles();
+        } else
+            System.out.println("No files found in metadata.");
         return listOfFiles;
     }
 
-/**
- * create an empty file 
-  *
- * @param filename Name of the file
- */
-    public void create(String fileName) throws Exception
-    {
-         // TODO: Create the file fileName by adding a new entry to the Metadata
-        // Write Metadata
+    /**
+     * Add a page to the file
+     *
+     * @param filename Name of the file
+     * @param data     RemoteInputStream.
+     */
+    public void append(String filename, RemoteInputFileStream data) throws Exception {
+        Metadata md = readMetaData();
+        if (md.fileExists(filename)) {
+            // ppath of json
+            long guid = md5(pathName);
 
-        
-        
+            FileStream real_file = new FileStream(pathName);
+            ChordMessageInterface peer = chord.locateSuccessor(guid);
+            peer.put(guid, real_file);
+
+            Metafile metafile = md.getFile(filename);
+            metafile.addPage(guid);
+            writeMetaData(md);
+        } else
+            System.out.println("That file does not exist. Try again.");
     }
-    
-/**
- * delete file 
-  *
- * @param filename Name of the file
- */
-    public void delete(String fileName) throws Exception
-    {
-     
-        
-    }
-    
-/**
- * Read block pageNumber of fileName 
-  *
- * @param filename Name of the file
- * @param pageNumber number of block. 
- */
-    public RemoteInputFileStream read(String fileName, int pageNumber) throws Exception
-    {
-        return null;
-    }
-    
- /**
- * Add a page to the file                
-  *
- * @param filename Name of the file
- * @param data RemoteInputStream. 
- */
-    public void append(String filename, RemoteInputFileStream data) throws Exception
-    {
-        
-    }
-    
+
 }
