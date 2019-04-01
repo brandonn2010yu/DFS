@@ -193,18 +193,7 @@ public class DFS
         // Write Metadata
     }
 
-  
-/**
- * List the files in the system
-  *
- * @param filename Name of the file
- */
-    public String lists() throws Exception
-    {
-        String listOfFiles = "";
- 
-        return listOfFiles;
-    }
+
 
 /**
  * create an empty file 
@@ -241,7 +230,27 @@ public class DFS
     {
         return null;
     }
-    
+
+
+    /**
+     * List the files in the system
+     *
+     * @param filename Name of the file
+     */
+    public String lists() throws Exception
+    {
+        String listOfFiles = "";
+        Metadata md = readMetaData();
+        if (md.files.size() > 0 || md == null)
+        {
+            Metadata metadata = readMetaData();
+            metadata.printListOfFiles();
+        }
+        else
+            System.out.println("No files found in metadata.");
+        return listOfFiles;
+    }
+
  /**
  * Add a page to the file                
   *
@@ -250,7 +259,22 @@ public class DFS
  */
     public void append(String filename, RemoteInputFileStream data) throws Exception
     {
-        
+        Metadata md = readMetaData();
+        if (md.fileExists(filename))
+        {
+            //ppath of json
+            long guid = md5(pathName);
+
+            FileStream real_file = new FileStream(pathName);
+            ChordMessageInterface peer = chord.locateSuccessor(guid);
+            peer.put(guid, real_file);
+
+            Metafile metafile = md.getFile(filename);
+            metafile.addPage(guid);
+            writeMetaData(md);
+        }
+        else
+            System.out.println("That file does not exist. Try again.");
     }
     
 }
