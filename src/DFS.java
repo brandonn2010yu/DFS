@@ -1,5 +1,6 @@
 import java.util.*;
 import java.nio.file.*;
+import java.io.*;
 import java.math.BigInteger;
 import java.security.*;
 import com.google.gson.Gson;
@@ -272,6 +273,15 @@ public class DFS {
         // Write Metadata
 
         // Setting temp JsonObject
+        FilesJson md = readMetaData();
+        if (md.fileExists(oldName))
+        {
+            FileJson metafile = md.getFile(oldName);
+            metafile.setName(newName);
+            writeMetaData(md);
+        }
+        else
+            System.out.println("That file does not exist. Try again.");
 
     }
 
@@ -328,6 +338,24 @@ public class DFS {
 
 
     public RemoteInputFileStream read(String fileName, int pageNumber) throws Exception {
+        FilesJson md = readMetaData();
+        if (md.fileExists(fileName))
+        {
+            FileJson metafile = md.getFile(fileName);
+            PagesJson page = metafile.getPage(pageNumber);
+            long guid = page.getGUID();
+            ChordMessageInterface peer = chord.locateSuccessor(guid);
+            InputStream metadataraw = peer.get(guid);
+
+            int content;
+            while ((content = metadataraw.read()) != 0)
+            {
+                System.out.print((char) content);
+            }
+            System.out.println("");
+        }
+        else
+            System.out.println("That file could not be located...");
         return null;
     }
 
@@ -336,7 +364,21 @@ public class DFS {
 
 
     public void append(String filename, RemoteInputFileStream data) throws Exception {
+        FilesJson md = readMetaData();
+        if (md.fileExists(filename))
+        {
+            long guid = md5(filename);
 
+            FilesJson real_file = new FilesJson(filename);
+            ChordMessageInterface peer = chord.locateSuccessor(guid);
+            peer.put(guid, real_file);
+
+            FileJson metafile = md.getFile(filename);
+            metafile.addPage(guid);
+            writeMetaData(md);
+        }
+        else
+            System.out.println("That file could not be located...");
     }
 
 }
