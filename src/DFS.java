@@ -222,9 +222,9 @@ public class DFS {
     }
 
     /**
-     * ???
+     * Establishes a Distributed File System
      * 
-     * @param port
+     * @param port Port number
      * @throws Exception
      */
     public DFS(int port) throws Exception {
