@@ -1,13 +1,9 @@
-import java.rmi.*;
-import java.net.*;
 import java.util.*;
-import java.io.*;
 import java.nio.file.*;
+import java.io.*;
 import java.math.BigInteger;
 import java.security.*;
 import com.google.gson.Gson;
-import java.io.InputStream;
-import java.util.*;
 
 /* JSON Format
 
@@ -33,34 +29,144 @@ import java.util.*;
 
 public class DFS {
 
+    /**
+     * This class is for Meta Page
+     */
     public class PagesJson {
         Long guid;
         Long size;
-
-        public PagesJson() {
-
+        int pageNumber;
+        public PagesJson(long guid, long size) {
+            this.guid = guid;
+            this.size = size;
+        }
+        public long getPageNumber()
+        {
+            return size;
+        }
+        public long getGUID()
+        {
+            return guid;
         }
         // getters
         // setters
     };
 
+    /**
+     * This class is for Meta File
+     */
     public class FileJson {
         String name;
         Long size;
         ArrayList<PagesJson> pages;
 
-        public FileJson() {
+        public FileJson(String name) {
+            this.name = name;
+        }
+        public void addPage(long guid)
+        {
+            pages.add(new PagesJson(pages.size()+1, guid));
+        }
+        public String getName()
+        {
+            return name;
+        }
+        public void setName(String name)
+        {
+            this.name = name;
+        }
+        public long getNumOfPages()
+        {
+            return pages.size();
+        }
+        public PagesJson getPage(int pageNumber)
+        {
+            return pages.get(pageNumber-1);
+        }
+        public void printListOfPages()
+        {
+            System.out.printf("\n%-5s%-15s%-15s\n", "", "Page Number", "GUID");
+            for (int i = 0; i < pages.size(); i++)
+            {
+                PagesJson temp = pages.get(i);
 
+                System.out.printf("%-5s%-15s%-15d\n", "", temp.getPageNumber(), temp.getGUID());
+            }
+            System.out.println("");
         }
         // getters
         // setters
     };
 
+    /**
+     * This class is for Meta Data
+     */
     public class FilesJson {
-        List<FileJson> file;
-
+        //List<FileJson> file;
+        ArrayList<FileJson> file = new ArrayList<FileJson>();
         public FilesJson() {
 
+        }
+
+        public void addFile(String fileName) {
+            FileJson newFile = new FileJson(fileName);
+            file.add(newFile);
+        }
+        public void printListOfFiles()
+        {
+            System.out.printf("\n%-15s%-15s\n", "Filename", "Number of Pages");
+            for (int i = 0; i < file.size(); i++)
+            {
+                FileJson temp = file.get(i);
+
+                System.out.printf("%-15s%-15d\n", temp.getName(), temp.getNumOfPages());
+
+                if (temp.getNumOfPages() > 0)
+                    temp.printListOfPages();
+            }
+            System.out.println("");
+        }
+        public FileJson getFile(String filename)
+        {
+            for (int i = 0; i < file.size(); i++)
+            {
+                FileJson temp = file.get(i);
+
+                if (temp.getName().equals(filename))
+                {
+                    return temp;
+                }
+            }
+            return null;
+        }
+        public boolean fileExists(String filename)
+        {
+            for(int i = 0; i < file.size(); i++)
+            {
+                FileJson temp = file.get(i);
+
+                if (temp.getName().equals(filename))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public void deleteFile(String filename)
+        {
+            ListIterator<FileJson> listIterator = file.listIterator();
+
+            while (listIterator.hasNext())
+            {
+                FileJson temp = listIterator.next();
+
+                if (temp.getName().equals(filename))
+                    listIterator.remove();
+            }
+        }
+        public void clear()
+        {
+            file.clear();
         }
         // getters
         // setters
@@ -167,98 +273,112 @@ public class DFS {
         // Write Metadata
 
         // Setting temp JsonObject
-        Gson gson = new Gson();
-        JsonObject request = new JsonObject();
-        JsonObject[] jsonRequest;
-
-        // Creating an array of Json Objects from metaData.json
-        try {
-            String path = "/metadata.json";
-            BufferedReader br = new BufferedReader(new FileReader(path));
-            jsonRequest = gson.fromJson(br, JsonObject[].class);
-
-            // Looks for method name, and returns JSON object with matching name
-            for (JsonObject object : jsonRequest) {
-                if (object.get("name").getAsString().equals(oldName)) {
-                    object.addProperty("name", newName);
-                    Timestamp tStamp = new Timestamp(System.currentTimeMillis());
-                    object.addProperty("readTS", tStamp);
-                    object.addProperty("writeTS", tStamp);
-                    break;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        FilesJson md = readMetaData();
+        if (md.fileExists(oldName))
+        {
+            FileJson metafile = md.getFile(oldName);
+            metafile.setName(newName);
+            writeMetaData(md);
         }
+        else
+            System.out.println("That file does not exist. Try again.");
+
     }
 
     /**
      * create an empty file
-     *
-     * @param filename Name of the file
      */
     public void create(String fileName) throws Exception {
-        // TODO: Create the file fileName by adding a new entry to the Metadata
-        // Write Metadata
-
+        FilesJson metaData= new FilesJson();
+        metaData.addFile(fileName);
+        writeMetaData(metaData);
     }
+
+    /**
+     * list
+     * @return
+     * @throws Exception
+     */
+    public void lists() throws Exception {
+        FilesJson metaData = readMetaData();
+        if (metaData.file.size() > 0 || metaData == null)
+        {
+            FilesJson metadata = readMetaData();
+            metadata.printListOfFiles();
+        }
+        else
+            System.out.println("No files found in metadata.");
+    }
+
 
     /**
      * delete file
-     *
-     * @param filename Name of the file
      */
     public void delete(String fileName) throws Exception {
-
+        FilesJson md = readMetaData();
+        if (md.fileExists(fileName))
+        {
+            FileJson metafile = md.getFile(fileName);
+            if(metafile.getNumOfPages() > 0)
+            {
+                for (int i = 0; i < metafile.getNumOfPages(); i++)
+                {
+                    PagesJson page = metafile.pages.get(i);
+                    long guid = page.getGUID();
+                    ChordMessageInterface peer = chord.locateSuccessor(guid);
+                    peer.delete(guid);
+                }
+            }
+            md.deleteFile(fileName);
+            writeMetaData(md);
+        }
+        else
+            System.out.println("That file does not exist. Try again.");
     }
 
-    /**
-     * Read block pageNumber of fileName
-     *
-     * @param filename   Name of the file
-     * @param pageNumber number of block.
-     */
+
     public RemoteInputFileStream read(String fileName, int pageNumber) throws Exception {
+        FilesJson md = readMetaData();
+        if (md.fileExists(fileName))
+        {
+            FileJson metafile = md.getFile(fileName);
+            PagesJson page = metafile.getPage(pageNumber);
+            long guid = page.getGUID();
+            ChordMessageInterface peer = chord.locateSuccessor(guid);
+            InputStream metadataraw = peer.get(guid);
+
+            int content;
+            while ((content = metadataraw.read()) != 0)
+            {
+                System.out.print((char) content);
+            }
+            System.out.println("");
+        }
+        else
+            System.out.println("That file could not be located...");
         return null;
     }
 
-    /**
-     * List the files in the system
-     *
-     * @param filename Name of the file
-     */
-    public String lists() throws Exception {
-        String listOfFiles = "";
-        Metadata md = readMetaData();
-        if (md.files.size() > 0 || md == null) {
-            Metadata metadata = readMetaData();
-            metadata.printListOfFiles();
-        } else
-            System.out.println("No files found in metadata.");
-        return listOfFiles;
-    }
 
-    /**
-     * Add a page to the file
-     *
-     * @param filename Name of the file
-     * @param data     RemoteInputStream.
-     */
+
+
+
     public void append(String filename, RemoteInputFileStream data) throws Exception {
-        Metadata md = readMetaData();
-        if (md.fileExists(filename)) {
-            // ppath of json
-            long guid = md5(pathName);
+        FilesJson md = readMetaData();
+        if (md.fileExists(filename))
+        {
+            long guid = md5(filename);
 
-            FileStream real_file = new FileStream(pathName);
+            FilesJson real_file = new FilesJson(filename);
             ChordMessageInterface peer = chord.locateSuccessor(guid);
             peer.put(guid, real_file);
 
-            Metafile metafile = md.getFile(filename);
+            FileJson metafile = md.getFile(filename);
             metafile.addPage(guid);
             writeMetaData(md);
-        } else
-            System.out.println("That file does not exist. Try again.");
+        }
+        else
+            System.out.println("That file could not be located...");
     }
 
 }

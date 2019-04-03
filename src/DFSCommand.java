@@ -33,6 +33,20 @@ public class DFSCommand
             {
                 dfs.leave();     
             }
+            if (result[0].equals("ls"))
+            {
+                dfs.lists();
+            }
+            if (result[0].equals("touch"))
+            {
+                dfs.create("New File");
+                System.out.print("New File Created ");
+            }
+            if (result[0].equals("delete"))
+            {
+                dfs.delete("New File");
+                System.out.print("New File Deleted ");
+            }
             line=buffer.readLine();  
         }
             // User interface:
